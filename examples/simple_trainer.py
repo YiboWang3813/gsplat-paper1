@@ -138,8 +138,10 @@ class SimpleTrainer:
         if save_imgs:
             # save them as a gif with PIL
             frames = [Image.fromarray(frame) for frame in frames]
+            out_dir = os.path.join(os.getcwd(), "renders")
+            os.makedirs(out_dir, exist_ok=True)
             frames[0].save(
-                os.getcwd() + "/renders/training.gif",
+                f"{out_dir}/training.gif",
                 save_all=True,
                 append_images=frames[1:],
                 optimize=False,
