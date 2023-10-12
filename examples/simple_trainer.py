@@ -91,7 +91,7 @@ class SimpleTrainer:
         self.opacities.requires_grad = True
         self.viewmat.requires_grad = False
 
-    def train(self, iterations: int = 1000, lr: float = 0.01, save_imgs: bool = True):
+    def train(self, iterations: int = 1000, lr: float = 0.01, save_imgs: bool = False):
         optimizer = optim.Adam(
             [self.rgbs, self.means, self.scales, self.opacities, self.quats], lr
         )
@@ -107,6 +107,8 @@ class SimpleTrainer:
                 self.viewmat,
                 self.focal,
                 self.focal,
+                self.W / 2,
+                self.H / 2,
                 self.H,
                 self.W,
                 self.tile_bounds,
@@ -134,8 +136,10 @@ class SimpleTrainer:
         if save_imgs:
             # save them as a gif with PIL
             frames = [Image.fromarray(frame) for frame in frames]
+            out_dir = os.path.join(os.getcwd(), "renders")
+            os.makedirs(out_dir, exist_ok=True)
             frames[0].save(
-                os.getcwd() + "/renders/training.gif",
+                f"{out_dir}/training.gif",
                 save_all=True,
                 append_images=frames[1:],
                 optimize=False,
@@ -156,7 +160,7 @@ def image_path_to_tensor(image_path: Path):
 def main(
     height: int = 256,
     width: int = 256,
-    num_points: int = 2000,
+    num_points: int = 100000,
     save_imgs: bool = True,
     img_path: Optional[Path] = None,
     iterations: int = 1000,
