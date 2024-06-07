@@ -8,6 +8,7 @@ from rich.console import Console
 from torch.utils.cpp_extension import _get_build_directory, load
 
 PATH = os.path.dirname(os.path.abspath(__file__))
+NO_FAST_MATH = os.getenv("NO_FAST_MATH", "0") == "1"
 
 
 def cuda_toolkit_available():
@@ -43,12 +44,15 @@ except ImportError:
     if cuda_toolkit_available():
         name = "gsplat_cuda"
         build_dir = _get_build_directory(name, verbose=False)
+        extra_include_paths = [os.path.join(PATH, "csrc/")]
+        extra_cflags = ["-O3"]
+        if NO_FAST_MATH:
+            extra_cuda_cflags = ["-O3"]
+        else:
+            extra_cuda_cflags = ["-O3", "--use_fast_math"]
         sources = list(glob.glob(os.path.join(PATH, "csrc/*.cu"))) + list(
             glob.glob(os.path.join(PATH, "csrc/*.cpp"))
         )
-        extra_include_paths = [os.path.join(PATH, "csrc/third_party/glm")]
-        extra_cflags = ["-O3"]
-        extra_cuda_cflags = ["-O3"]
 
         # If JIT is interrupted it might leave a lock in the build directory.
         # We dont want it to exist in any case.
@@ -62,7 +66,6 @@ except ImportError:
         ):
             # If the build exists, we assume the extension has been built
             # and we can load it.
-
             _C = load(
                 name=name,
                 sources=sources,
