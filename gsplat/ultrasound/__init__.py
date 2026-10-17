@@ -14,7 +14,13 @@ _BACKENDS = {
     'gaussianpile': ('gaussianplie_renderer', 'gaussianplie_renderer'),
     'slice_adapted_3dgs': ('slice_adapted_3dgs_renderer', 'slice_adapted_3dgs_renderer'),
     'ultrags_baseline': ('ultrags_baseline_renderer', 'ultrags_baseline_renderer'),
-    'ultrags': ('ultrags_renderer', 'ultrags_renderer'),
+    'ultrags_renderer': ('ultrags_renderer', 'ultrags_renderer'),
+    # The historical UltraGS method uses this mapper/shader pair, not the
+    # separate ultrags_renderer package. Keep their identities explicit.
+    'ellipsoid_mapper': ('old/ellipsoid_mapper', 'ellipsoid_mapper'),
+    'ultrags_shader': ('old/ultrags_shader', 'ultrags_shader'),
+    'grid_mapping': ('grid_mapping', 'grid_mapping'),
+    's2s_shader': ('s2s_shader', 's2s_shader'),
 }
 
 
