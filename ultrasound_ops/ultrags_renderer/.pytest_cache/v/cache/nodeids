@@ -1,0 +1,4 @@
+[
+  "tests/test_batched_equivalence.py::test_batched_matches_serial_forward_backward",
+  "tests/test_batched_equivalence.py::test_batched_with_active_mask_matches_serial_subsets"
+]

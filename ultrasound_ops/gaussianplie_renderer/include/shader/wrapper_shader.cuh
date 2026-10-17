@@ -1,0 +1,65 @@
+#pragma once
+#include <torch/extension.h>
+
+/// Full slice forward: Mapper (tile or pixel CSR) + Shader (additive or alpha compositing).
+/// ``shader_weight_mode``: 0 = probe3d, 1 = plane_cond2d (Schur conditional 2D), 2 = us_focus.
+std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> ProjectedSliceForwardCUDA(
+    const torch::Tensor& gauss_means,
+    const torch::Tensor& gauss_scales,
+    const torch::Tensor& gauss_quats,
+    const torch::Tensor& gauss_opacities,
+    const torch::Tensor& gauss_intensities,
+    const torch::Tensor& pose_probe_to_world,
+    const torch::Tensor& slice_grid_geometry,
+    const torch::Tensor& us_focus_params,
+    const int H,
+    const int W,
+    const float lateral_spacing_mm_per_pix,
+    const float axial_spacing_mm_per_pix,
+    const float axial_near_mm,
+    const int tile_size_px,
+    const float elev_corridor_half_mm,
+    const float slab_half_thickness_mm,
+    const float k_sigma,
+    const int mapper_kind,
+    const int num_pixels_lateral,
+    const int num_pixels_axial,
+    const bool sort_by_v,
+    const int compositing_mode,
+    const float fixed_bg_color,
+    const int shader_weight_mode);
+
+std::tuple<
+    torch::Tensor,
+    torch::Tensor,
+    torch::Tensor,
+    torch::Tensor,
+    torch::Tensor,
+    torch::Tensor>
+ProjectedSliceBackwardCUDA(
+    const torch::Tensor& gauss_means,
+    const torch::Tensor& gauss_scales,
+    const torch::Tensor& gauss_quats,
+    const torch::Tensor& gauss_opacities,
+    const torch::Tensor& gauss_intensities,
+    const torch::Tensor& pose_probe_to_world,
+    const torch::Tensor& slice_grid_geometry,
+    const torch::Tensor& us_focus_params,
+    const torch::Tensor& gauss_rects,
+    const int gauss_rect_is_pixels,
+    const int H,
+    const int W,
+    const int tile_size_px,
+    const float lateral_spacing_mm_per_pix,
+    const float axial_spacing_mm_per_pix,
+    const float axial_near_mm,
+    const float k_sigma,
+    const int compositing_mode,
+    const float fixed_bg_color,
+    const int mapper_kind,
+    const torch::Tensor& csr0,
+    const torch::Tensor& csr1,
+    const torch::Tensor& csr2,
+    const torch::Tensor& grad_pixel_colors,
+    const int shader_weight_mode,
+    const bool compute_pose_grad);
