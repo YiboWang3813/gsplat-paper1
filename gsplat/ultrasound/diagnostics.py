@@ -1,10 +1,9 @@
 import torch
 
+from ._backend import backend as _C
 from .autograd import _us_focus_params_vector
 from .grid_geometry import shader_weight_mode_id
 from .types import UltrasoundRenderConfig
-
-from ._backend import backend as _C
 
 
 def contribution_residual_stats(

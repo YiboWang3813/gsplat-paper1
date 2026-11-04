@@ -12,19 +12,42 @@ from pathlib import Path
 import torch
 
 
-def build_spec() -> tuple[Path, list[Path], dict]:
+def build_spec(backend="ours") -> tuple[Path, list[Path], dict]:
     from torch.utils.cpp_extension import CUDA_HOME
 
     if not CUDA_HOME or not os.environ.get("CC") or not os.environ.get("CXX"):
         raise RuntimeError(
             "Select CUDA_HOME, CC and CXX explicitly (use paper1/bin/paper1)."
         )
-    root = Path(__file__).resolve().parents[1] / "cuda/csrc/ultrasound"
+    base = Path(__file__).resolve().parents[1] / "cuda/csrc/ultrasound"
+    if backend not in (
+        "ours",
+        "ultragauss",
+        "ultragray",
+        "gaussianpile",
+        "slice3dgs",
+        "ultrags",
+    ):
+        raise ValueError(f"Unknown native ultrasound backend: {backend}")
+    root = base if backend == "ours" else base / "backends" / backend
     sources = sorted((root / "src").rglob("*.cu")) + sorted(
         (root / "src").glob("*.cpp")
     )
+    if backend == "ultrags":
+        sources = [
+            root / name
+            for name in (
+                "ext.cpp",
+                "rasterize_points.cu",
+                "cuda_rasterizer/rasterizer_impl.cu",
+                "cuda_rasterizer/forward.cu",
+                "cuda_rasterizer/backward.cu",
+            )
+        ]
     digest = hashlib.sha256()
     for path in sorted(root.rglob("*")):
+        if backend == "ours" and path.is_relative_to(base / "backends"):
+            continue
         if path.is_file():
             digest.update(str(path.relative_to(root)).encode())
             digest.update(path.read_bytes())
@@ -43,6 +66,12 @@ def build_spec() -> tuple[Path, list[Path], dict]:
         "cflags": ["-O3", "-std=c++17"],
         "cuda_cflags": ["-O3", "--use_fast_math", "-lineinfo", "-std=c++17"],
     }
+    if backend != "ours":
+        identity["backend"] = backend
+        common = hashlib.sha256()
+        for path in sorted((base / "common").glob("*.cuh")):
+            common.update(path.read_bytes())
+        identity["common_sha256"] = common.hexdigest()
     if not sources or not identity["architecture"]:
         raise RuntimeError(
             "Missing ultrasound sources or explicit TORCH_CUDA_ARCH_LIST."
@@ -50,13 +79,13 @@ def build_spec() -> tuple[Path, list[Path], dict]:
     return root, sources, identity
 
 
-@functools.lru_cache(maxsize=1)
-def load_backend(verbose: bool = False):
+@functools.lru_cache(maxsize=12)
+def load_backend(verbose: bool = False, backend="ours"):
     import fcntl
 
     from torch.utils.cpp_extension import load
 
-    root, sources, identity = build_spec()
+    root, sources, identity = build_spec(backend)
     key = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:24]
     directory = (
         Path(
@@ -75,7 +104,14 @@ def load_backend(verbose: bool = False):
             sources=[str(p) for p in sources],
             extra_cflags=identity["cflags"],
             extra_cuda_cflags=identity["cuda_cflags"],
-            extra_include_paths=[str(root / "include"), str(root / "common")],
+            extra_include_paths=[
+                str(root / "include"),
+                str(root),
+                str(root / "third_party/glm"),
+                str(
+                    Path(__file__).resolve().parents[1] / "cuda/csrc/ultrasound/common"
+                ),
+            ],
             build_directory=str(directory),
             verbose=verbose,
         )
@@ -83,9 +119,12 @@ def load_backend(verbose: bool = False):
         return module
 
 
-class _Backend:
+class Backend:
+    def __init__(self, name="ours"):
+        self.name = name
+
     def __getattr__(self, name):
-        function = getattr(load_backend(), name)
+        function = getattr(load_backend(backend=self.name), name)
 
         def call(*args, **kwargs):
             reference = next(
@@ -99,4 +138,4 @@ class _Backend:
         return call
 
 
-backend = _Backend()
+backend = Backend()

@@ -1,2 +1,3 @@
 recursive-include gsplat/cuda/csrc *
 recursive-include gsplat/cuda/csrc/ultrasound *.cu *.cpp *.cuh
+recursive-include gsplat/cuda/csrc/ultrasound/backends *.h *.hpp *.inl *.md

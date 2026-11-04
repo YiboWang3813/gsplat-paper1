@@ -1,9 +1,8 @@
 import torch
 
+from ._backend import backend as _C
 from .grid_geometry import shader_weight_mode_id
 from .types import UltrasoundRenderConfig
-
-from ._backend import backend as _C
 
 _META_LEN = 16
 _US_FOCUS_PARAMS_LEN = 15
