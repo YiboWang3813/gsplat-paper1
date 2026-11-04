@@ -4,7 +4,6 @@ from types import SimpleNamespace
 
 import pytest
 import torch
-
 from gsplat.ultrasound import (
     UltrasoundRenderConfig,
     build_slice_grid_pack,
