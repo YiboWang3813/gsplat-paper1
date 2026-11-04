@@ -33,28 +33,22 @@ __device__ __forceinline__ void quat_to_rot(const float4& q_in, float R[9]) {
     ours_quat_to_rot(q_in, R);
 }
 
-__device__ __forceinline__ float frob_dot_grad_R(const float grad_R[9], const float Rp[9]) {
-    float s = 0.f;
-    for (int i = 0; i < 9; ++i) s += grad_R[i] * Rp[i];
-    return s;
-}
-
-__device__ __forceinline__ void grad_quat_finite_diff(const float4& q_raw, const float grad_R[9], float* grad_q) {
-    const float eps = 1e-3f;
-    for (int k = 0; k < 4; ++k) {
-        float4 qp = q_raw;
-        float4 qm = q_raw;
-        float* pk = (&qp.x) + k;
-        float* mk = (&qm.x) + k;
-        *pk += eps;
-        *mk -= eps;
-        float Rp[9], Rm[9];
-        quat_to_rot(qp, Rp);
-        quat_to_rot(qm, Rm);
-        float fp = frob_dot_grad_R(grad_R, Rp);
-        float fm = frob_dot_grad_R(grad_R, Rm);
-        grad_q[k] = (fp - fm) / (2.f * eps);
-    }
+// Exact VJP of the normalized quaternion rotation used by the forward kernel.
+// The legacy finite difference (epsilon=1e-3) subtracted nearly equal Frobenius
+// products; weak/isotropic splats amplified that cancellation in Adam updates.
+__device__ __forceinline__ void grad_quat_analytic(const float4& q_raw, const float G[9], float* grad_q) {
+    const float norm2 = q_raw.x*q_raw.x + q_raw.y*q_raw.y + q_raw.z*q_raw.z + q_raw.w*q_raw.w;
+    const float inv_norm = rsqrtf(fmaxf(1e-12f, norm2));
+    const float w=q_raw.x*inv_norm, x=q_raw.y*inv_norm, y=q_raw.z*inv_norm, z=q_raw.w*inv_norm;
+    const float gw=2.f*(-z*G[1]+y*G[2]+z*G[3]-x*G[5]-y*G[6]+x*G[7]);
+    const float gx=2.f*(y*(G[1]+G[3])+z*(G[2]+G[6])+w*(G[7]-G[5]))-4.f*x*(G[4]+G[8]);
+    const float gy=2.f*(x*(G[1]+G[3])+w*(G[2]-G[6])+z*(G[5]+G[7]))-4.f*y*(G[0]+G[8]);
+    const float gz=2.f*(w*(G[3]-G[1])+x*(G[2]+G[6])+y*(G[5]+G[7]))-4.f*z*(G[0]+G[4]);
+    const float radial = norm2 > 1e-12f ? w*gw+x*gx+y*gy+z*gz : 0.f;
+    grad_q[0]=(gw-w*radial)*inv_norm;
+    grad_q[1]=(gx-x*radial)*inv_norm;
+    grad_q[2]=(gy-y*radial)*inv_norm;
+    grad_q[3]=(gz-z*radial)*inv_norm;
 }
 
 __device__ __forceinline__ void mat3_mul(const float A[9], const float B[9], float C[9]) {
@@ -628,7 +622,7 @@ __global__ void kernel_ours_alpha_finalize_gauss(
     grad_R[8] = g_col2.z;
 
     float gq_local[4];
-    grad_quat_finite_diff(make_float4(qptr[0], qptr[1], qptr[2], qptr[3]), grad_R, gq_local);
+    grad_quat_analytic(make_float4(qptr[0], qptr[1], qptr[2], qptr[3]), grad_R, gq_local);
     grad_gauss_quats[g * 4 + 0] = gq_local[0];
     grad_gauss_quats[g * 4 + 1] = gq_local[1];
     grad_gauss_quats[g * 4 + 2] = gq_local[2];
@@ -944,7 +938,7 @@ __global__ void kernel_projected_slice_backward(
     grad_R[8] = g_col2.z;
 
     float gq_local[4];
-    grad_quat_finite_diff(make_float4(qptr[0], qptr[1], qptr[2], qptr[3]), grad_R, gq_local);
+    grad_quat_analytic(make_float4(qptr[0], qptr[1], qptr[2], qptr[3]), grad_R, gq_local);
     grad_gauss_quats[g * 4 + 0] = gq_local[0];
     grad_gauss_quats[g * 4 + 1] = gq_local[1];
     grad_gauss_quats[g * 4 + 2] = gq_local[2];

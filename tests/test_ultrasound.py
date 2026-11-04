@@ -67,6 +67,17 @@ def inputs(ray=False):
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA execution required")
 def test_local_forward_and_gradients_match_torch_reference():
     config, tensors, grid = inputs()
+    with torch.no_grad():
+        tensors[2].copy_(
+            torch.tensor(
+                [
+                    [0.94, 0.1, 0.2, -0.1],
+                    [0.89, -0.2, 0.1, 0.3],
+                    [0.93, 0.2, -0.1, 0.13],
+                ],
+                device="cuda",
+            )
+        )
     reference = [t.detach().clone().requires_grad_(True) for t in tensors]
     image = rasterization(config, *tensors, grid)
     expected = render_us_focus_reference(config, *reference)
@@ -75,7 +86,7 @@ def test_local_forward_and_gradients_match_torch_reference():
     upstream = torch.randn_like(image) * 0.1
     (image * upstream).sum().backward()
     (expected * upstream).sum().backward()
-    for index in (0, 3, 4):
+    for index in (0, 1, 2, 3, 4):
         torch.testing.assert_close(
             tensors[index].grad, reference[index].grad, atol=3e-4, rtol=4e-3
         )
