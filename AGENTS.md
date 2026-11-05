@@ -1,24 +1,9 @@
 # Paper1 gsplat fork
 
-## Hong Kong native refactor (2026-11-04)
-
-- Current policy is /home/yibo/AGENTS.md and ../AGENTS.md; latest instructions
-  supersede the historical relocation notes below.
-- Work on refactor/native-ultrasound. Native ultrasound Python API lives in
-  gsplat/ultrasound, kernels in gsplat/cuda/csrc/ultrasound, density strategy
-  in gsplat/strategy/ultrasound.py. No native imports of standalone renderers.
-- Historical ultrasound_ops packages are migration references for remaining
-  backends; their transfer does not certify native adaptation.
-- Builds use a content-addressed cache under shared/cache with a real file lock.
-- Use ../bin/paper1 build and an available RTX4090 locally, not eehpc Slurm.
-- Never replace paper2's shared gsplat installation or shared Torch/CUDA stack.
-
-Development branch: `paper1/main`; upstream base: `v1.4.0`.
-
-- `ultrasound_ops/` owns the preserved custom CUDA sources and common headers.
-- `gsplat.ultrasound` exposes lazy, explicit backend discovery/loading.
-- Preserve physical units, quaternion/pose conventions and finite-slice/global-path semantics.
-- Historical compiled binaries live in `../cache/legacy_builds/`, not in Git.
-- Build a new ABI separately; never delete or overwrite the frozen reference binary.
-- Current workspace rules are `../docs/03_engineering/workspace_rules.md`.
-- Run CUDA compilation and GPU verification through Slurm.
+- Read /home/yibo/AGENTS.md and ../AGENTS.md. Current branch: refactor/native-ultrasound; upstream base: v1.4.0.
+- Native ultrasound API: gsplat/ultrasound; kernels: gsplat/cuda/csrc/ultrasound; density control: gsplat/strategy/ultrasound.py. Retired standalone ultrasound_ops sources have been removed.
+- Preserve physical units, pose/quaternion conventions, finite-slice/global-path semantics and training budgets.
+- Use ../bin/paper1 and the shared runtime. Builds use compatible source/Torch/Toolkit/architecture cache keys and resource locks; never change paper2's source routing or shared packages.
+- This server does not use Slurm. Verify an actually idle RTX4090 and hold the physical-device lock before GPU execution. Existing CPU checks do not authorize training.
+- Runs and generated binaries stay outside source Git, in ../outputs and shared/cache as appropriate. Docs and graph/table projects belong in ../docs.
+- Do not push rewritten history or modify other users' jobs without explicit authorization.

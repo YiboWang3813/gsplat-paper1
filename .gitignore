@@ -125,3 +125,6 @@ data
 results
 
 !examples/benchmarks/compression/results/
+
+# Upstream local demo media, retrievable from the pinned upstream source.
+/docs/source/assets/training.gif
